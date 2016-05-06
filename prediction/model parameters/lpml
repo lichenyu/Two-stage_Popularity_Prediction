@@ -1,0 +1,44 @@
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_training_1-1:
+[ 1.0724712   1.14192219  1.25370105  1.39349752  1.49880296  1.76048589
+  1.95789327]
+0.0
+
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_training_1-2:
+[-0.18691163]
+135.765454584
+
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_training_1-3:
+[ 0.06589864]
+1487.38155282
+
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_training_1-4:
+[ 6.36129369]
+12833.3457305
+
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_training_2-2:
+[ 1.07821162  1.15710881  1.18819683  1.4117525   1.71740085  1.8795892
+  2.75691248]
+0.0
+
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_training_2-3:
+[-0.17053877]
+1385.77626427
+
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_training_2-4:
+[ 0.1708198]
+15610.0329494
+
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_training_3-3:
+[ 1.10047651  1.07799066  1.25881086  1.38282909  1.59148252  1.59210534
+  3.67144547]
+0.0
+
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_training_3-4:
+[-0.13970785]
+13687.3739876
+
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_training_4-4:
+[ 1.04043808  1.12799226  1.23230465  1.29770462  1.35402868  1.56469062
+  2.19911708]
+0.0
+

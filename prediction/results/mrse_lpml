@@ -1,0 +1,33 @@
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_test_1-1
+MRSE = : 0.0320122087689
+
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_test_1-2
+MRSE = : 0.0665798011682
+
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_test_1-3
+MRSE = : 0.236813085408
+
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_test_1-4
+MRSE = : 0.366784001824
+
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_test_2-2
+MRSE = : 0.0293196603119
+
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_test_2-3
+MRSE = : 0.0856852475221
+
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_test_2-4
+MRSE = : 0.275509166292
+
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_test_3-3
+MRSE = : 0.0429228727736
+
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_test_3-4
+MRSE = : 0.11728308144
+
+/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/prediction/datasets/vci_forlevels_test_4-4
+MRSE = : 0.0538347364381
+
+
+Total MRSE = : 0.0369875931735
+
