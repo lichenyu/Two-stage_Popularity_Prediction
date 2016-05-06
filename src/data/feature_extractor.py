@@ -10,11 +10,123 @@ from types import NoneType, UnicodeType
 # text features
 # history features
 
-def get_tags_bylevel(level_file, json_file, out_file_prefix):
+# for each level of vc30, extract the tags
+def get_tags_bylevel(level_file, json_files, out_file_prefix):
+    # get level for each video
+    vid_level_map = {}
     level_fd = open(level_file, 'r')
-    
+    for line in level_fd.readlines():
+        fields = line.strip().split('\t', -1)
+        # vid, level_vc7, level_vc30, (level_vc7, level_vc30)
+        vid_level_map[fields[0]] = fields[2]
     level_fd.close()
-
+    
+    out_l1_fd = open(out_file_prefix + '_level1', 'w')
+    out_l2_fd = open(out_file_prefix + '_level2', 'w')
+    out_l3_fd = open(out_file_prefix + '_level3', 'w')
+    out_l4_fd = open(out_file_prefix + '_level4', 'w')
+    
+    # read json each day, overwrite meta-data in the map, check and output
+    for json_file in json_files:
+        vid_tags_map = {}
+        json_fd = open(json_file, 'r')
+        for line in json_fd.readlines():
+            video_metadata = json.loads(line.strip())
+            vid_tags_map[video_metadata['id']] = video_metadata['tags']
+        json_fd.close()
+        
+        for vid in vid_tags_map.keys():
+            if 0 < len(vid_tags_map[vid]) and vid_level_map.has_key(vid):
+                if '1' == vid_level_map[vid]:
+                    out_fd = out_l1_fd
+                elif '2' == vid_level_map[vid]:
+                    out_fd = out_l2_fd
+                elif '3' == vid_level_map[vid]:
+                    out_fd = out_l3_fd
+                elif '4' == vid_level_map[vid]:
+                    out_fd = out_l4_fd
+                else:
+                    print('Impossible')
+                for tag in vid_tags_map[vid].strip().split(',', -1):
+                    out_fd.write(vid + '\t')
+                    out_fd.write(tag.encode('utf-8'))
+                    out_fd.write('\n')
+            else:
+                continue
+            
+    out_l1_fd.close()
+    out_l2_fd.close()
+    out_l3_fd.close()
+    out_l4_fd.close()
+    
+# count tags for each level
+def count_tags(in_file, out_file):
+    tag_count_map = {}
+    total_count = 0
+    in_fd = open(in_file, 'r')
+    for line in in_fd.readlines():
+        fields = line.strip().split('\t', -1)
+        # vid, tag
+        if tag_count_map.has_key(fields[1]):
+            tag_count_map[fields[1]] = tag_count_map[fields[1]] + 1
+        else:
+            tag_count_map[fields[1]] = 1
+        total_count = total_count + 1
+    in_fd.close()
+    
+    sorted_map = sorted(tag_count_map.items(), lambda i1, i2: cmp(i1[1], i2[1]), reverse = True)
+    
+    out_fd = open(out_file, 'w')
+    for item in sorted_map:
+        out_fd.write(item[0] + '\t' + str(item[1]) + '\t' + '%.04f' % (item[1] * 100. / total_count) + '\n')
+    out_fd.close()
+    
+# get tag list for each level
+def get_taglist(in_files, out_files):
+    level1_tag_list = []
+    level2_tag_list = []
+    level3_tag_list = []
+    level4_tag_list = []
+    level1_tag_set = set()
+    level2_tag_set = set()
+    level3_tag_set = set()
+    level4_tag_set = set()
+    # iterate level1 to level4 in files
+    for i in range(0, 4):
+        tag_list = eval('level' + str(i + 1) + '_tag_list')
+        tag_set = eval('level' + str(i + 1) + '_tag_set')
+        in_fd = open(in_files[i], 'r')
+        lines = in_fd.readlines()
+        for j in range(0, 200):
+            fields = lines[j].strip().split('\t', -1)
+            # tag, count, pct
+            tag_list.append((fields[0], lines[j]))
+            tag_set.add(fields[0])
+        in_fd.close
+    # iterate each tag in each level
+    for i in range(0, 4):
+        out_fd = open(out_files[i], 'w')
+        tag_list = eval('level' + str(i % 4 + 1) + '_tag_list')
+        tag_set1 = eval('level' + str((i + 1) % 4 + 1) + '_tag_set')
+        tag_set2 = eval('level' + str((i + 2) % 4 + 1) + '_tag_set')
+        tag_set3 = eval('level' + str((i + 3) % 4 + 1) + '_tag_set')
+        for item in tag_list:
+            if False == (item[0] in tag_set1) and False == (item[0] in tag_set2) and False == (item[0] in tag_set3):
+                out_fd.write(item[1])
+            else:
+                if 0 == i:
+                    if True == (item[0] in tag_set1) and False == (item[0] in tag_set2) and False == (item[0] in tag_set3):
+                        out_fd.write(item[1])
+                elif 3 == i:
+                    if False == (item[0] in tag_set1) and False == (item[0] in tag_set2) and True == (item[0] in tag_set3):
+                        out_fd.write(item[1])
+                else:
+                    if True == (item[0] in tag_set1) and False == (item[0] in tag_set2) and False == (item[0] in tag_set3):
+                        out_fd.write(item[1])
+                    elif False == (item[0] in tag_set1) and False == (item[0] in tag_set2) and True == (item[0] in tag_set3):
+                        out_fd.write(item[1])
+        out_fd.close()
+    
 # name, 
 # description, 
 # regist_time, is_verified, is_vip, 
@@ -279,3 +391,37 @@ def get_tags_bylevel(level_file, json_file, out_file_prefix):
 #         #break
 #     labelFd.close()
 #     outFd.close()
+
+
+
+
+
+
+if '__main__' == __name__:
+    datapath = '/Users/ouyangshuxin/Documents/Datasets/Youku_Popularity_151206_160103/'
+    workpath = '/Users/ouyangshuxin/Documents/Two-stage_Popularity_Prediction/'
+    
+    date_strs = ['2015-12-10', '2015-12-11', 
+                 '2015-12-12', '2015-12-13', '2015-12-14', '2015-12-15', '2015-12-16', 
+                 '2015-12-17', '2015-12-18', '2015-12-19', '2015-12-20', '2015-12-21']
+    
+#     in_files = []
+#     for d in date_strs:
+#         in_files.append(datapath + 'video_detail/' + d + '_' + d)
+#     get_tags_bylevel(workpath + 'features/popularity level/levels', 
+#                      in_files, 
+#                      workpath + 'features/tags/vid_tag')
+#     for i in range(0, 4):
+#         count_tags(workpath + 'features/tags/vid_tag_level' + str(i + 1), 
+#                    workpath + 'features/tags/vid_tag_count_level' + str(i + 1))
+    in_files = []
+    out_files = []
+    for i in range(0, 4):
+        in_files.append(workpath + 'features/tags/vid_tag_count_level' + str(i + 1))
+        out_files.append(workpath + 'features/tags/taglist_level' + str(i + 1))
+    get_taglist(in_files, out_files)
+    
+
+    print('All Done!')
+
+
