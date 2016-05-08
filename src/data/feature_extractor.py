@@ -12,7 +12,7 @@ from types import NoneType, UnicodeType
 # video features
 # user features
 # topic features : tag count, des length, title
-# text features
+# text features: # u-name, u-description, v-title 
 # history features
 
 # for each level of vc30, extract the tags
@@ -259,45 +259,45 @@ def get_titlewordlist(in_files, out_files):
                         out_fd.write(item[1])
         out_fd.close()
     
-# name, 
-# description, 
-# regist_time, is_verified, is_vip, 
-# videos_count, vv_count, favorites_count, playlists_count, statuses_count, 
-# followers_count (subscribe_count), following_count
-
-# def get_user_features(in_file, date_str, out_file):
-#     user_info_map = {}
-#     in_fd = open(in_file, 'r')
-#     for line in in_fd.readlines():
-#         user_metadata = json.loads(line.strip())
-#         
-#         uid = user_metadata['id']
-#         user_info_map[uid] = []
-#         
-#         user_info_map[uid].append(user_metadata['name'])
-#         user_info_map[uid].append(user_metadata['description'])
-#         user_info_map[uid].append(user_metadata['regist_time'])
-#         user_info_map[uid].append(user_metadata['is_verified'])
-#         user_info_map[uid].append(user_metadata['is_vip'])
-#         user_info_map[uid].append(user_metadata['videos_count'])
-#         user_info_map[uid].append(user_metadata['vv_count'])
-#         user_info_map[uid].append(user_metadata['favorites_count'])
-#         user_info_map[uid].append(user_metadata['playlists_count'])
-#         user_info_map[uid].append(user_metadata['statuses_count'])
-#         if user_metadata['followers_count'] >= user_metadata['subscribe_count']:
-#             user_info_map[uid].append(user_metadata['followers_count'])
-#         else:
-#             user_info_map[uid].append(user_metadata['subscribe_count'])
-#         user_info_map[uid].append(user_metadata['following_count'])
-#     return user_info_map
-# 
-# 
-# 
-
-#                         
-# 
 
 
+
+
+
+# uid, regist_time, is_verified, is_vip, videos_count, vv_count, favorites_count, playlists_count, statuses_count, followers_count (subscribe_count), following_count
+# extract all users in the json file each day
+def get_user_info(json_path, date_str, out_file):
+    cur_date = date(int(date_str[0 : 4]), int(date_str[5 : 7]), int(date_str[8 : 10]))
+    json_fd = open(json_path + date_str, 'r')
+    out_fd = open(out_file, 'w')
+    for line in json_fd.readlines():
+        user_metadata = json.loads(line.strip())
+        if 0 == len(user_metadata):
+            continue
+        out_fd.write(user_metadata['id'])
+        if 0 < len(user_metadata['regist_time']):
+            reg_date = date(int(user_metadata['regist_time'][0 : 4]), int(user_metadata['regist_time'][5 : 7]), int(user_metadata['regist_time'][8 : 10]))
+            out_fd.write('\t' + str((cur_date - reg_date).days))
+        else:
+            out_fd.write('\t0')
+        if 0 < user_metadata['is_verified']:
+            out_fd.write('\tTrue')
+        else:
+            out_fd.write('\tFalse')
+        out_fd.write('\t' + str(user_metadata['is_vip']))
+        out_fd.write('\t' + str(user_metadata['videos_count']))
+        out_fd.write('\t' + str(user_metadata['vv_count']))
+        out_fd.write('\t' + str(user_metadata['favorites_count']))
+        out_fd.write('\t' + str(user_metadata['playlists_count']))
+        out_fd.write('\t' + str(user_metadata['statuses_count']))
+        if user_metadata['followers_count'] >= user_metadata['subscribe_count']:
+            out_fd.write('\t' + str(user_metadata['followers_count']))
+        else:
+            out_fd.write('\t' + str(user_metadata['subscribe_count']))
+        out_fd.write('\t' + str(user_metadata['following_count']))
+        out_fd.write('\n')
+    json_fd.close()
+    out_fd.close()
 
 
 
@@ -675,6 +675,14 @@ if '__main__' == __name__:
 #                        datapath + 'video_detail/', 
 #                        d, 
 #                        workpath + 'features/video properties/' + d)
+
+
+
+    # extract user features
+#     for d in date_strs:
+#         get_user_info(datapath + 'user_detail/', 
+#                       d, 
+#                       workpath + 'features/user statistics/' + d)
 
     print('All Done!')
 
