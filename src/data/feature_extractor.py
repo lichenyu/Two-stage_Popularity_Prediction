@@ -2,6 +2,8 @@
 
 import json
 import jieba
+from datetime import date
+from datetime import timedelta
 
 import re
 from types import NoneType, UnicodeType
@@ -9,7 +11,7 @@ from types import NoneType, UnicodeType
 # extract features for videos published on certain date
 # video features
 # user features
-# topic features 
+# topic features : tag count, des length, title
 # text features
 # history features
 
@@ -291,35 +293,122 @@ def get_titlewordlist(in_files, out_files):
 # 
 # 
 # 
-# # public_type    copyright_type    duration    category    title    source[name]    description    tags    streamtypes
-# # user[ID]    published
+
+#                         
 # 
-# 
-# def get_video_info(in_file):
-#     
-#     
-#     videoMap = {}
-#     inFd = open(videofile, 'r')
-#     for line in inFd.readlines():
-#         video_metadata_batch = json.loads(line.strip())['videos']
-#         for video_metadata in video_metadata_batch:
-#             #print(video_metadata)
-#             vid = video_metadata['id']
-#             videoMap[vid] = []
-#             #title    description    duration    category    public_type
-#             #tags    copyright_type    streamtypes
-#             videoMap[vid].append(video_metadata['user']['id'])
-#             videoMap[vid].append(video_metadata['title'])
-#             videoMap[vid].append(video_metadata['description'])
-#             videoMap[vid].append(video_metadata['duration'])
-#             videoMap[vid].append(video_metadata['category'])
-#             videoMap[vid].append(video_metadata['public_type'])
-#             videoMap[vid].append(video_metadata['tags'])
-#             videoMap[vid].append(video_metadata['copyright_type'])
-#             videoMap[vid].append(video_metadata['streamtypes'])
-#             #break
-#         #break
-#     return videoMap
+
+
+
+
+
+def count_sourcename(json_path, date_strs, out_file):
+    name_count_map = {}
+    total_count = 0
+    for date_str in date_strs:
+        first_date = date(int(date_str[0 : 4]), int(date_str[5 : 7]), int(date_str[8 : 10]))
+        day_delta = timedelta(days = 29)
+        last_date = first_date + day_delta
+        json_fd = open(json_path + str(first_date) + '_' + str(last_date), 'r')
+        for line in json_fd.readlines():
+            video_metadata = json.loads(line.strip())
+            name = video_metadata['source']['name']
+            if name_count_map.has_key(name):
+                name_count_map[name] = name_count_map[name] + 1
+            else:
+                name_count_map[name] = 1
+            total_count = total_count + 1
+        json_fd.close()
+        
+    sorted_map = sorted(name_count_map.items(), lambda i1, i2: cmp(i1[1], i2[1]), reverse = True)
+    
+    out_fd = open(out_file, 'w')
+    for item in sorted_map:
+        out_fd.write(item[0].encode('utf-8'))
+        out_fd.write('\t' + str(item[1]) + '\t' + '%.04f' % (item[1] * 100. / total_count) + '\n')
+    out_fd.close()
+        
+    
+
+# vid, category, duration, published_tod, len(streamtypes), copyright_type, public_type, source[name], user[ID]
+# for each set of videos, check the json of last two observation days (because for data clean and the cat may change)
+def get_video_info(vc_file, sourcename_file, json_path, date_str, out_file):
+    # get vids for one-day video set
+    vid_set = set()
+    vc_fd = open(vc_file, 'r')
+    for line in vc_fd.readlines():
+        fields = line.strip().split('\t', -1)
+        # vid, vc1, vc2, ..., vc30
+        vid_set.add(fields[0])
+    vc_fd.close()
+    
+    # load source name list (top 15)
+    sn_set = set()
+    sn_fd = open(sourcename_file, 'r')
+    for _ in range(0, 15):
+        line = sn_fd.readline()
+        fields = line.strip().split('\t', -1)
+        # name, count, pct
+        sn_set.add(fields[0])
+    sn_fd.close()
+    
+    # for the last observation date
+    first_date = date(int(date_str[0 : 4]), int(date_str[5 : 7]), int(date_str[8 : 10]))
+    day_delta = timedelta(days = 29)
+    last_date = first_date + day_delta
+    json_fd = open(json_path + str(first_date) + '_' + str(last_date), 'r')
+    out_fd = open(out_file, 'w')
+    for line in json_fd.readlines():
+        video_metadata = json.loads(line.strip())
+        if video_metadata['id'] in vid_set:
+            vid_set.remove(video_metadata['id'])
+            out_fd.write(video_metadata['id'])
+            out_fd.write('\t' + video_metadata['category'].encode('utf-8'))
+            if None == video_metadata['duration']:
+                out_fd.write('\t0')
+            else:
+                out_fd.write('\t' + video_metadata['duration'])
+            out_fd.write('\t' + video_metadata['published'][11:13])
+            out_fd.write('\t' + str(len(video_metadata['streamtypes'])))
+            out_fd.write('\t' + video_metadata['copyright_type'])
+            out_fd.write('\t' + video_metadata['public_type'])
+            if video_metadata['source']['name'].encode('utf-8') in sn_set:
+                out_fd.write('\t' + video_metadata['source']['name'].encode('utf-8'))
+            else:
+                out_fd.write('\tothers')
+            out_fd.write('\t' + video_metadata['user']['id'] + '\n')
+    json_fd.close()
+     
+    # for the second to the last observation date
+    day_delta = timedelta(days = 28)
+    last_date = first_date + day_delta
+    json_fd = open(json_path + str(first_date) + '_' + str(last_date), 'r')
+    for line in json_fd.readlines():
+        video_metadata = json.loads(line.strip())
+        if video_metadata['id'] in vid_set:
+            out_fd.write(video_metadata['id'])
+            out_fd.write('\t' + video_metadata['category'].encode('utf-8'))
+            if None == video_metadata['duration']:
+                out_fd.write('\t0')
+            else:
+                out_fd.write('\t' + video_metadata['duration'])
+            out_fd.write('\t' + video_metadata['published'][11:13])
+            out_fd.write('\t' + str(len(video_metadata['streamtypes'])))
+            out_fd.write('\t' + video_metadata['copyright_type'])
+            out_fd.write('\t' + video_metadata['public_type'])
+            if video_metadata['source']['name'].encode('utf-8') in sn_set:
+                out_fd.write('\t' + video_metadata['source']['name'].encode('utf-8'))
+            else:
+                out_fd.write('\tothers')
+            out_fd.write('\t' + video_metadata['user']['id'] + '\n')
+    json_fd.close()
+    out_fd.close()
+    
+    
+    
+    
+    
+    
+    
 # 
 # def extractFeatures(videofile, userfile, labelfile, outfile, indidate, details = False):
 #     userMap = getUserFeatures(userfile)
@@ -534,6 +623,7 @@ if '__main__' == __name__:
     date_strs = ['2015-12-12', '2015-12-13', '2015-12-14', '2015-12-15', '2015-12-16', 
                  '2015-12-17', '2015-12-18', '2015-12-19', '2015-12-20', '2015-12-21']
     
+    # get tag list
 #     in_files = []
 #     for d in date_strs:
 #         in_files.append(datapath + 'video_detail/' + d + '_' + d)
@@ -552,6 +642,7 @@ if '__main__' == __name__:
 
 
 
+    # get titlewords list
 #     in_files = []
 #     for d in date_strs:
 #         in_files.append(datapath + 'video_detail/' + d + '_' + d)
@@ -561,12 +652,29 @@ if '__main__' == __name__:
 #     for i in range(0, 4):
 #         count_titlewords(workpath + 'features/titlewords/vid_titleword_level' + str(i + 1), 
 #                          workpath + 'features/titlewords/vid_titleword_count_level' + str(i + 1))
-    in_files = []
-    out_files = []
-    for i in range(0, 4):
-        in_files.append(workpath + 'features/titlewords/vid_titleword_count_level' + str(i + 1))
-        out_files.append(workpath + 'features/titlewords/titlewordlist_level' + str(i + 1))
-    get_titlewordlist(in_files, out_files)
+#     in_files = []
+#     out_files = []
+#     for i in range(0, 4):
+#         in_files.append(workpath + 'features/titlewords/vid_titleword_count_level' + str(i + 1))
+#         out_files.append(workpath + 'features/titlewords/titlewordlist_level' + str(i + 1))
+#     get_titlewordlist(in_files, out_files)
+
+
+
+    # get source names
+#     count_sourcename(datapath + 'video_detail/', 
+#                      date_strs, 
+#                      workpath + 'features/sourcenames/names')
+
+
+
+    # extract video features
+#     for d in date_strs:
+#         get_video_info(workpath + 'data/view count clean/' + d, 
+#                        workpath + 'features/sourcenames/names', 
+#                        datapath + 'video_detail/', 
+#                        d, 
+#                        workpath + 'features/video properties/' + d)
 
     print('All Done!')
 
