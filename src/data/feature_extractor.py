@@ -261,6 +261,7 @@ def get_titlewordlist(in_files, out_files):
     
 
 
+# ------------------------- get topic resources above -------------------------
 
 
 
@@ -330,16 +331,17 @@ def count_sourcename(json_path, date_strs, out_file):
     
 
 # vid, category, duration, published_tod, len(streamtypes), copyright_type, public_type, source[name], user[ID]
+# l1-4_tag_count, l1-4_titleword_count
 # for each set of videos, check the json of last two observation days (because for data clean and the cat may change)
-def get_video_info(vc_file, sourcename_file, json_path, date_str, out_file):
+def get_video_info(vci_file, sourcename_file, tag_path_prefix, titleword_path_prefix, json_path, date_str, video_properties_file, content_topic_file):
     # get vids for one-day video set
     vid_set = set()
-    vc_fd = open(vc_file, 'r')
-    for line in vc_fd.readlines():
+    vci_fd = open(vci_file, 'r')
+    for line in vci_fd.readlines():
         fields = line.strip().split('\t', -1)
-        # vid, vc1, vc2, ..., vc30
+        # vid, vci1, vci2, ..., vci30
         vid_set.add(fields[0])
-    vc_fd.close()
+    vci_fd.close()
     
     # load source name list (top 15)
     sn_set = set()
@@ -351,31 +353,92 @@ def get_video_info(vc_file, sourcename_file, json_path, date_str, out_file):
         sn_set.add(fields[0])
     sn_fd.close()
     
+    # load tag list for each level
+    l1_tag_set = set()
+    l2_tag_set = set()
+    l3_tag_set = set()
+    l4_tag_set = set()
+    for i in range(1, 1 + 4):
+        tag_set = eval('l' + str(i) + '_tag_set')
+        tag_fd = open(tag_path_prefix + str(i), 'r')
+        for line in tag_fd.readlines():
+            fields = line.strip().split('\t', -1)
+            # tag, count, pct
+            tag_set.add(fields[0])
+        tag_fd.close()
+        
+    # load titleword list for each level
+    l1_titleword_set = set()
+    l2_titleword_set = set()
+    l3_titleword_set = set()
+    l4_titleword_set = set()
+    for i in range(1, 1 + 4):
+        titleword_set = eval('l' + str(i) + '_titleword_set')
+        titleword_fd = open(titleword_path_prefix + str(i), 'r')
+        for line in titleword_fd.readlines():
+            fields = line.strip().split('\t', -1)
+            # unicode(titleword), count, pct
+            titleword_set.add(fields[0])
+        titleword_fd.close()
+    
     # for the last observation date
     first_date = date(int(date_str[0 : 4]), int(date_str[5 : 7]), int(date_str[8 : 10]))
     day_delta = timedelta(days = 29)
     last_date = first_date + day_delta
     json_fd = open(json_path + str(first_date) + '_' + str(last_date), 'r')
-    out_fd = open(out_file, 'w')
+    video_properties_fd = open(video_properties_file, 'w')
+    content_topic_fd = open(content_topic_file, 'w')
     for line in json_fd.readlines():
         video_metadata = json.loads(line.strip())
         if video_metadata['id'] in vid_set:
             vid_set.remove(video_metadata['id'])
-            out_fd.write(video_metadata['id'])
-            out_fd.write('\t' + video_metadata['category'].encode('utf-8'))
+            # video properties
+            video_properties_fd.write(video_metadata['id'])
+            video_properties_fd.write('\t' + video_metadata['category'].encode('utf-8'))
             if None == video_metadata['duration']:
-                out_fd.write('\t0')
+                video_properties_fd.write('\t0')
             else:
-                out_fd.write('\t' + video_metadata['duration'])
-            out_fd.write('\t' + video_metadata['published'][11:13])
-            out_fd.write('\t' + str(len(video_metadata['streamtypes'])))
-            out_fd.write('\t' + video_metadata['copyright_type'])
-            out_fd.write('\t' + video_metadata['public_type'])
+                video_properties_fd.write('\t' + video_metadata['duration'])
+            video_properties_fd.write('\t' + video_metadata['published'][11:13])
+            video_properties_fd.write('\t' + str(len(video_metadata['streamtypes'])))
+            video_properties_fd.write('\t' + video_metadata['copyright_type'])
+            video_properties_fd.write('\t' + video_metadata['public_type'])
             if video_metadata['source']['name'].encode('utf-8') in sn_set:
-                out_fd.write('\t' + video_metadata['source']['name'].encode('utf-8'))
+                video_properties_fd.write('\t' + video_metadata['source']['name'].encode('utf-8'))
             else:
-                out_fd.write('\tothers')
-            out_fd.write('\t' + video_metadata['user']['id'] + '\n')
+                video_properties_fd.write('\tothers')
+            video_properties_fd.write('\t' + video_metadata['user']['id'] + '\n')
+            # content topic
+            t1 = 0
+            t2 = 0
+            t3 = 0
+            t4 = 0
+            for cur_tag in video_metadata['tags'].strip().split(',', -1):
+                if cur_tag.encode('utf-8') in l1_tag_set:
+                    t1 = t1 + 1
+                if cur_tag.encode('utf-8') in l2_tag_set:
+                    t2 = t2 + 1
+                if cur_tag.encode('utf-8') in l3_tag_set:
+                    t3 = t3 + 1
+                if cur_tag.encode('utf-8') in l4_tag_set:
+                    t4 = t4 + 1
+            w1 = 0
+            w2 = 0
+            w3 = 0
+            w4 = 0
+            for cur_titleword in jieba.lcut(video_metadata['title'].strip()):
+                if cur_titleword.encode('unicode-escape') in l1_titleword_set:
+                    w1 = w1 + 1
+                if cur_titleword.encode('unicode-escape') in l2_titleword_set:
+                    w2 = w2 + 1
+                if cur_titleword.encode('unicode-escape') in l3_titleword_set:
+                    w3 = w3 + 1
+                if cur_titleword.encode('unicode-escape') in l4_titleword_set:
+                    w4 = w4 + 1
+            content_topic_fd.write(video_metadata['id'])
+            content_topic_fd.write('\t' + str(t1) + '\t' + str(t2) + '\t' + str(t3) + '\t' + str(t4))
+            content_topic_fd.write('\t' + str(w1) + '\t' + str(w2) + '\t' + str(w3) + '\t' + str(w4))
+            content_topic_fd.write('\n')
     json_fd.close()
      
     # for the second to the last observation date
@@ -385,23 +448,56 @@ def get_video_info(vc_file, sourcename_file, json_path, date_str, out_file):
     for line in json_fd.readlines():
         video_metadata = json.loads(line.strip())
         if video_metadata['id'] in vid_set:
-            out_fd.write(video_metadata['id'])
-            out_fd.write('\t' + video_metadata['category'].encode('utf-8'))
+            # video properties
+            video_properties_fd.write(video_metadata['id'])
+            video_properties_fd.write('\t' + video_metadata['category'].encode('utf-8'))
             if None == video_metadata['duration']:
-                out_fd.write('\t0')
+                video_properties_fd.write('\t0')
             else:
-                out_fd.write('\t' + video_metadata['duration'])
-            out_fd.write('\t' + video_metadata['published'][11:13])
-            out_fd.write('\t' + str(len(video_metadata['streamtypes'])))
-            out_fd.write('\t' + video_metadata['copyright_type'])
-            out_fd.write('\t' + video_metadata['public_type'])
+                video_properties_fd.write('\t' + video_metadata['duration'])
+            video_properties_fd.write('\t' + video_metadata['published'][11:13])
+            video_properties_fd.write('\t' + str(len(video_metadata['streamtypes'])))
+            video_properties_fd.write('\t' + video_metadata['copyright_type'])
+            video_properties_fd.write('\t' + video_metadata['public_type'])
             if video_metadata['source']['name'].encode('utf-8') in sn_set:
-                out_fd.write('\t' + video_metadata['source']['name'].encode('utf-8'))
+                video_properties_fd.write('\t' + video_metadata['source']['name'].encode('utf-8'))
             else:
-                out_fd.write('\tothers')
-            out_fd.write('\t' + video_metadata['user']['id'] + '\n')
+                video_properties_fd.write('\tothers')
+            video_properties_fd.write('\t' + video_metadata['user']['id'] + '\n')
+            # content topic
+            t1 = 0
+            t2 = 0
+            t3 = 0
+            t4 = 0
+            for cur_tag in video_metadata['tags'].strip().split(',', -1):
+                if cur_tag in l1_tag_set:
+                    t1 = t1 + 1
+                if cur_tag in l2_tag_set:
+                    t2 = t2 + 1
+                if cur_tag in l3_tag_set:
+                    t3 = t3 + 1
+                if cur_tag in l4_tag_set:
+                    t4 = t4 + 1
+            w1 = 0
+            w2 = 0
+            w3 = 0
+            w4 = 0
+            for cur_titleword in jieba.lcut(video_metadata['title'].strip()):
+                if cur_titleword.encode('unicode-escape') in l1_titleword_set:
+                    w1 = w1 + 1
+                if cur_titleword.encode('unicode-escape') in l2_titleword_set:
+                    w2 = w2 + 1
+                if cur_titleword.encode('unicode-escape') in l3_titleword_set:
+                    w3 = w3 + 1
+                if cur_titleword.encode('unicode-escape') in l4_titleword_set:
+                    w4 = w4 + 1
+            content_topic_fd.write(video_metadata['id'])
+            content_topic_fd.write('\t' + str(t1) + '\t' + str(t2) + '\t' + str(t3) + '\t' + str(t4))
+            content_topic_fd.write('\t' + str(w1) + '\t' + str(w2) + '\t' + str(w3) + '\t' + str(w4))
+            content_topic_fd.write('\n')
     json_fd.close()
-    out_fd.close()
+    video_properties_fd.close()
+    content_topic_fd.close()
     
     
     
@@ -669,12 +765,18 @@ if '__main__' == __name__:
 
 
     # extract video features
-#     for d in date_strs:
-#         get_video_info(workpath + 'data/view count clean/' + d, 
-#                        workpath + 'features/sourcenames/names', 
-#                        datapath + 'video_detail/', 
-#                        d, 
-#                        workpath + 'features/video properties/' + d)
+    for d in date_strs:
+        # vci_file, sourcename_file, tag_path_prefix, titleword_path_prefix, 
+        # json_path, date_str, 
+        # video_properties_file, content_topic_file
+        get_video_info(workpath + 'data/view count clean increase/' + d, 
+                       workpath + 'features/sourcenames/names', 
+                       workpath + 'features/tags/taglist_level', 
+                       workpath + 'features/titlewords/titlewordlist_level', 
+                       datapath + 'video_detail/', 
+                       d, 
+                       workpath + 'features/video properties/' + d, 
+                       workpath + 'features/content topic/' + d)
 
 
 
