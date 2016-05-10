@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 
 import json
+import re
 import jieba
+import jieba.posseg as pseg
+from snownlp import SnowNLP
 from datetime import date
 from datetime import timedelta
 
-import re
-from types import NoneType, UnicodeType
+
 
 # extract features for videos published on certain date
 # video features
@@ -332,8 +334,9 @@ def count_sourcename(json_path, date_strs, out_file):
 
 # vid, category, duration, published_tod, len(streamtypes), copyright_type, public_type, source[name], user[ID]
 # l1-4_tag_count, l1-4_titleword_count
+# title: len, cn, n, v, adj, adv, prep, num, eng, punc, senti; 
 # for each set of videos, check the json of last two observation days (because for data clean and the cat may change)
-def get_video_info(vci_file, sourcename_file, tag_path_prefix, titleword_path_prefix, json_path, date_str, video_properties_file, content_topic_file):
+def get_video_info(vci_file, sourcename_file, tag_path_prefix, titleword_path_prefix, json_path, date_str, video_properties_file, content_topic_file, textual_analysis_file):
     # get vids for one-day video set
     vid_set = set()
     vci_fd = open(vci_file, 'r')
@@ -380,6 +383,17 @@ def get_video_info(vci_file, sourcename_file, tag_path_prefix, titleword_path_pr
             # unicode(titleword), count, pct
             titleword_set.add(fields[0])
         titleword_fd.close()
+        
+    # PoS label set
+    noun_set = set(['n', 'nr', 'nr1', 'nr2', 'nrj', 'nrf', 'ns', 'nsf', 'nt', 'nz', 'nl', 'ng', 'vn', 'an'])
+    verb_set = set(['v', 'vshi', 'vyou', 'vf', 'vx', 'vi', 'vl', 'vg'])
+    adjective_set = set(['a', 'ag', 'al'])
+    adverb_set = set(['d', 'vd', 'ad'])
+    preposition_set = set(['p', 'pba', 'pbei'])
+    numeral_set = set(['m', 'mq'])
+    eng_set = set(['eng'])
+    punctuation_set = set(['x', 'xe', 'xs', 'xm', 'xu', 'w', 'wkz', 'wky', 'wyz', 'wyy', 'wj', 'ww', 'wt', 'wd', 'wf', 'wn', 'wm', 'ws', 'wp', 'wb', 'wh'])
+    re_cnchar = re.compile(ur'[\u4e00-\u9fa5]')
     
     # for the last observation date
     first_date = date(int(date_str[0 : 4]), int(date_str[5 : 7]), int(date_str[8 : 10]))
@@ -388,6 +402,7 @@ def get_video_info(vci_file, sourcename_file, tag_path_prefix, titleword_path_pr
     json_fd = open(json_path + str(first_date) + '_' + str(last_date), 'r')
     video_properties_fd = open(video_properties_file, 'w')
     content_topic_fd = open(content_topic_file, 'w')
+    textual_analysis_fd = open(textual_analysis_file, 'w')
     for line in json_fd.readlines():
         video_metadata = json.loads(line.strip())
         if video_metadata['id'] in vid_set:
@@ -409,10 +424,7 @@ def get_video_info(vci_file, sourcename_file, tag_path_prefix, titleword_path_pr
                 video_properties_fd.write('\tothers')
             video_properties_fd.write('\t' + video_metadata['user']['id'] + '\n')
             # content topic
-            t1 = 0
-            t2 = 0
-            t3 = 0
-            t4 = 0
+            t1 = t2 = t3 = t4 = 0
             for cur_tag in video_metadata['tags'].strip().split(',', -1):
                 if cur_tag.encode('utf-8') in l1_tag_set:
                     t1 = t1 + 1
@@ -422,10 +434,7 @@ def get_video_info(vci_file, sourcename_file, tag_path_prefix, titleword_path_pr
                     t3 = t3 + 1
                 if cur_tag.encode('utf-8') in l4_tag_set:
                     t4 = t4 + 1
-            w1 = 0
-            w2 = 0
-            w3 = 0
-            w4 = 0
+            w1 = w2 = w3 = w4 = 0
             for cur_titleword in jieba.lcut(video_metadata['title'].strip()):
                 if cur_titleword.encode('unicode-escape') in l1_titleword_set:
                     w1 = w1 + 1
@@ -439,6 +448,66 @@ def get_video_info(vci_file, sourcename_file, tag_path_prefix, titleword_path_pr
             content_topic_fd.write('\t' + str(t1) + '\t' + str(t2) + '\t' + str(t3) + '\t' + str(t4))
             content_topic_fd.write('\t' + str(w1) + '\t' + str(w2) + '\t' + str(w3) + '\t' + str(w4))
             content_topic_fd.write('\n')
+            # textual analysis
+            cur_title = video_metadata['title']
+            title_len = len(cur_title)
+            title_cnchar_len = len(re_cnchar.findall(cur_title))
+            noun_count = 0
+            verb_count = 0
+            adjective_count = 0
+            adverb_count = 0
+            preposition_count = 0
+            numeral_count = 0
+            eng_count = 0
+            punctuation_count = 0
+            words = pseg.cut(cur_title)
+            word_count = 0
+            for word, flag in words:
+                if flag in noun_set:
+                    noun_count = noun_count + 1
+                if flag in verb_set:
+                    verb_count = verb_count + 1
+                if flag in adjective_set:
+                    adjective_count = adjective_count + 1
+                if flag in adverb_set:
+                    adverb_count = adverb_count + 1
+                if flag in preposition_set:
+                    preposition_count = preposition_count + 1
+                if flag in numeral_set:
+                    numeral_count = numeral_count + 1
+                if flag in eng_set:
+                    eng_count = eng_count + 1
+                if flag in punctuation_set:
+                    punctuation_count = punctuation_count + 1
+                word_count = word_count + 1
+            title_senti = SnowNLP(cur_title).sentiments
+            cur_des = video_metadata['description']
+            des_len = len(cur_des)
+            if 0 == des_len:
+                des_senti = 0.5
+            else:
+                des_senti = SnowNLP(cur_des).sentiments
+            cur_tags = video_metadata['tags']
+            tags_count = len(cur_tags.strip().split(',', -1))
+            if 0 == len(cur_tags):
+                tags_senti = 0.5
+            else:
+                tags_senti = SnowNLP(cur_tags).sentiments
+            textual_analysis_fd.write(video_metadata['id'])
+            textual_analysis_fd.write('\t%d\t%d\t%0.4f\t%d\t%0.4f\t%d\t%0.4f\t%d\t%0.4f\t%d\t%0.4f\t%d\t%0.4f\t%d\t%0.4f\t%d\t%0.4f\t%d\t%0.4f\t%0.8f' % 
+                                      (title_len, title_cnchar_len, 1. * title_cnchar_len / title_len, 
+                                       noun_count, 1. * noun_count / word_count, 
+                                       verb_count, 1. * verb_count / word_count, 
+                                       adjective_count, 1. * adjective_count / word_count, 
+                                       adverb_count, 1. * adverb_count / word_count, 
+                                       preposition_count, 1. * preposition_count / word_count, 
+                                       numeral_count, 1. * numeral_count / word_count, 
+                                       eng_count, 1. * eng_count / word_count, 
+                                       punctuation_count, 1. * punctuation_count / word_count, 
+                                       title_senti))
+            textual_analysis_fd.write('\t%d\t%0.8f\t%d\t%0.8f' % (des_len, des_senti, tags_count, tags_senti))
+            textual_analysis_fd.write('\n')
+            
     json_fd.close()
      
     # for the second to the last observation date
@@ -465,10 +534,7 @@ def get_video_info(vci_file, sourcename_file, tag_path_prefix, titleword_path_pr
                 video_properties_fd.write('\tothers')
             video_properties_fd.write('\t' + video_metadata['user']['id'] + '\n')
             # content topic
-            t1 = 0
-            t2 = 0
-            t3 = 0
-            t4 = 0
+            t1 = t2 = t3 = t4 = 0
             for cur_tag in video_metadata['tags'].strip().split(',', -1):
                 if cur_tag in l1_tag_set:
                     t1 = t1 + 1
@@ -478,10 +544,7 @@ def get_video_info(vci_file, sourcename_file, tag_path_prefix, titleword_path_pr
                     t3 = t3 + 1
                 if cur_tag in l4_tag_set:
                     t4 = t4 + 1
-            w1 = 0
-            w2 = 0
-            w3 = 0
-            w4 = 0
+            w1 = w2 = w3 = w4 = 0
             for cur_titleword in jieba.lcut(video_metadata['title'].strip()):
                 if cur_titleword.encode('unicode-escape') in l1_titleword_set:
                     w1 = w1 + 1
@@ -495,9 +558,70 @@ def get_video_info(vci_file, sourcename_file, tag_path_prefix, titleword_path_pr
             content_topic_fd.write('\t' + str(t1) + '\t' + str(t2) + '\t' + str(t3) + '\t' + str(t4))
             content_topic_fd.write('\t' + str(w1) + '\t' + str(w2) + '\t' + str(w3) + '\t' + str(w4))
             content_topic_fd.write('\n')
+            # textual analysis
+            cur_title = video_metadata['title']
+            title_len = len(cur_title)
+            title_cnchar_len = len(re_cnchar.findall(cur_title))
+            noun_count = 0
+            verb_count = 0
+            adjective_count = 0
+            adverb_count = 0
+            preposition_count = 0
+            numeral_count = 0
+            eng_count = 0
+            punctuation_count = 0
+            words = pseg.cut(cur_title)
+            word_count = 0
+            for word, flag in words:
+                if flag in noun_set:
+                    noun_count = noun_count + 1
+                if flag in verb_set:
+                    verb_count = verb_count + 1
+                if flag in adjective_set:
+                    adjective_count = adjective_count + 1
+                if flag in adverb_set:
+                    adverb_count = adverb_count + 1
+                if flag in preposition_set:
+                    preposition_count = preposition_count + 1
+                if flag in numeral_set:
+                    numeral_count = numeral_count + 1
+                if flag in eng_set:
+                    eng_count = eng_count + 1
+                if flag in punctuation_set:
+                    punctuation_count = punctuation_count + 1
+                word_count = word_count + 1
+            title_senti = SnowNLP(cur_title).sentiments
+            cur_des = video_metadata['description']
+            des_len = len(cur_des)
+            if 0 == des_len:
+                des_senti = 0.5
+            else:
+                des_senti = SnowNLP(cur_des).sentiments
+            cur_tags = video_metadata['tags']
+            tags_count = len(cur_tags.strip().split(',', -1))
+            if 0 == len(cur_tags):
+                tags_senti = 0.5
+            else:
+                tags_senti = SnowNLP(cur_tags).sentiments
+            textual_analysis_fd.write(video_metadata['id'])
+            textual_analysis_fd.write('\t%d\t%d\t%0.4f\t%d\t%0.4f\t%d\t%0.4f\t%d\t%0.4f\t%d\t%0.4f\t%d\t%0.4f\t%d\t%0.4f\t%d\t%0.4f\t%d\t%0.4f\t%0.8f' % 
+                                      (title_len, title_cnchar_len, 1. * title_cnchar_len / title_len, 
+                                       noun_count, 1. * noun_count / word_count, 
+                                       verb_count, 1. * verb_count / word_count, 
+                                       adjective_count, 1. * adjective_count / word_count, 
+                                       adverb_count, 1. * adverb_count / word_count, 
+                                       preposition_count, 1. * preposition_count / word_count, 
+                                       numeral_count, 1. * numeral_count / word_count, 
+                                       eng_count, 1. * eng_count / word_count, 
+                                       punctuation_count, 1. * punctuation_count / word_count, 
+                                       title_senti))
+            textual_analysis_fd.write('\t%d\t%0.8f\t%d\t%0.8f' % (des_len, des_senti, tags_count, tags_senti))
+            textual_analysis_fd.write('\n')
+            
     json_fd.close()
     video_properties_fd.close()
     content_topic_fd.close()
+    textual_analysis_fd.close()
     
     
     
@@ -542,7 +666,7 @@ def get_video_info(vci_file, sourcename_file, tag_path_prefix, titleword_path_pr
 #                 titleLen = 0 if isinstance(videoMap[vid][1], NoneType) else len(videoMap[vid][1])
 #                 features.append(titleLen)
 #                 # ---regular expression---
-#                 cncharPart = re.compile(ur'[\u4e00-\u9fa5]')
+#                 
 #                 digitPart = re.compile('\d')
 #                 letterPart = re.compile('[A-Za-z_-]')
 #                 spacePart = re.compile(r' ')
@@ -571,7 +695,7 @@ def get_video_info(vci_file, sourcename_file, tag_path_prefix, titleword_path_pr
 #                     # booktitle flag in title
 #                     features.append(False)
 #                 else:
-#                     cncharLen = len(cncharPart.findall(videoMap[vid][1]))
+#                     
 #                     digitLen = len(digitPart.findall(videoMap[vid][1]))
 #                     letterLen = len(letterPart.findall(videoMap[vid][1]))
 #                     spaceLen = len(spacePart.findall(videoMap[vid][1]))
@@ -718,6 +842,7 @@ if '__main__' == __name__:
     
     date_strs = ['2015-12-12', '2015-12-13', '2015-12-14', '2015-12-15', '2015-12-16', 
                  '2015-12-17', '2015-12-18', '2015-12-19', '2015-12-20', '2015-12-21']
+#     date_strs = ['2015-12-12', '2015-12-13']
     
     # get tag list
 #     in_files = []
@@ -764,27 +889,28 @@ if '__main__' == __name__:
 
 
 
-    # extract video features
-    for d in date_strs:
-        # vci_file, sourcename_file, tag_path_prefix, titleword_path_prefix, 
-        # json_path, date_str, 
-        # video_properties_file, content_topic_file
-        get_video_info(workpath + 'data/view count clean increase/' + d, 
-                       workpath + 'features/sourcenames/names', 
-                       workpath + 'features/tags/taglist_level', 
-                       workpath + 'features/titlewords/titlewordlist_level', 
-                       datapath + 'video_detail/', 
-                       d, 
-                       workpath + 'features/video properties/' + d, 
-                       workpath + 'features/content topic/' + d)
+#     # extract video features
+#     for d in date_strs:
+#         # vci_file, sourcename_file, tag_path_prefix, titleword_path_prefix, 
+#         # json_path, date_str, 
+#         # video_properties_file, content_topic_file, textual_analysis_file
+#         get_video_info(workpath + 'data/view count clean increase/' + d, 
+#                        workpath + 'features/sourcenames/names', 
+#                        workpath + 'features/tags/taglist_level', 
+#                        workpath + 'features/titlewords/titlewordlist_level', 
+#                        datapath + 'video_detail/', 
+#                        d, 
+#                        workpath + 'features/video property/' + d, 
+#                        workpath + 'features/content topic/' + d, 
+#                        workpath + 'features/textual analysis/' + d)
 
 
 
-    # extract user features
+#     # extract user features
 #     for d in date_strs:
 #         get_user_info(datapath + 'user_detail/', 
 #                       d, 
-#                       workpath + 'features/user statistics/' + d)
+#                       workpath + 'features/user statistic/' + d)
 
     print('All Done!')
 
