@@ -655,7 +655,7 @@ def get_historical_populairty(vci_file, json_path, date_str, historical_populari
             burst_flag = False
             for vci in vid_vci_map[video_metadata['id']]:
                 if 0 == s:
-                    historical_popularity_fd.write('\t%0')
+                    historical_popularity_fd.write('\t0')
                 else:
                     historical_popularity_fd.write('\t%0.4f' % (1. * vci / s))
                 if 0 < s and 3 * 1. / 7 <= 1. * vci / s:
@@ -687,7 +687,7 @@ def get_historical_populairty(vci_file, json_path, date_str, historical_populari
             burst_flag = False
             for vci in vid_vci_map[video_metadata['id']]:
                 if 0 == s:
-                    historical_popularity_fd.write('\t%0')
+                    historical_popularity_fd.write('\t0')
                 else:
                     historical_popularity_fd.write('\t%0.4f' % (1. * vci / s))
                 if 0 < s and 3 * 1. / 7 <= 1. * vci / s:
@@ -786,12 +786,12 @@ if '__main__' == __name__:
 
 
 
-#     # get historical popularitys
-#     for d in date_strs:
-#         get_historical_populairty(workpath + 'data/view count clean increase/' + d, 
-#                                   datapath + 'video_detail/', 
-#                                   d, 
-#                                   workpath + 'features/historical popularity/' + d)
+    # get historical popularitys
+    for d in date_strs:
+        get_historical_populairty(workpath + 'data/view count clean increase/' + d, 
+                                  datapath + 'video_detail/', 
+                                  d, 
+                                  workpath + 'features/historical popularity/' + d)
 
     # merge files
     in_files = []
